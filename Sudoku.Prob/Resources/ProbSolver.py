@@ -131,15 +131,24 @@ class Constraints:
           for i in range(self.size):
                 print(self.s[i*self.size:(1+i)*self.size])
     
-instance = np.array([0,0,0,5,9,2,8,1,0,2,0,4,0,7,3,0,0,0,0,5,0,0,1,0,0,0,3,0,3,2,1,0,0,0,9,0,0,4,0,9,0,7,0,3,0,0,6,0,0,
-                     0,5,1,4,0,1,0,0,0,4,0,0,2,0,0,0,0,3,5,0,9,0,7,0,9,5,7,2,8,0,0,0])
+# instance = np.array([0,0,0,5,9,2,8,1,0,2,0,4,0,7,3,0,0,0,0,5,0,0,1,0,0,0,3,0,3,2,1,0,0,0,9,0,0,4,0,9,0,7,0,3,0,0,6,0,0,0,5,1,4,0,1,0,0,0,4,0,0,2,0,0,0,0,3,5,0,9,0,7,0,9,5,7,2,8,0,0,0])
+# conversion de la variable d'entrée dans le format désiré                
+sudoku = asNumpyArray(instance)
+
+#résolution                
 t=Constraints()
-t.read(instance)
+t.read(sudoku)
 t.innit_p()
-t.print_s()
+# t.print_s()
 for i in range(10):
     t.get_grid_p_c()
     t.grid_p()
     t.guess()
-print()
-t.print_s()
+# print()
+# t.print_s()
+
+
+# Redimensionner t.s pour qu'il soit une matrice size x size
+solution_2d = t.s.reshape((9, 9))
+# Convertir la matrice numpy en tableau .NET
+r = [asNetArray(solution_2d[i]) for i in range(9)]

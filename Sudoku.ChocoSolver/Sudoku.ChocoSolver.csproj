@@ -10,4 +10,13 @@
     <ProjectReference Include="..\Sudoku.Shared\Sudoku.Shared.csproj" />
   </ItemGroup>
 
-</Project>
+  <ItemGroup>
+    <PackageReference Include="IKVM" Version="8.7.5" />
+	<PackageReference Include="IKVM.Image.JDK" Version="8.7.5" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <IkvmReference Include=".\ChocoJava\choco-parsers-4.10.14-light.jar" />
+  </ItemGroup>
+	
+</Project> 

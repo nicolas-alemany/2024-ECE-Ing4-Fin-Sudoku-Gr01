@@ -21,5 +21,6 @@
     <ProjectReference Include="..\Sudoku.Coloration\Sudoku.Coloration.csproj" />
     <ProjectReference Include="..\Sudoku.SolveurHumain\Sudoku.SolveurHumain.csproj" />
     <ProjectReference Include="..\Sudoku.MYBackTrack.solver\Sudoku.MYBackTrack.solver.csproj" />
+    <ProjectReference Include="..\Sudoku.Cspaima\Sudoku.Cspaima.csproj" />
   </ItemGroup>
 </Project>
