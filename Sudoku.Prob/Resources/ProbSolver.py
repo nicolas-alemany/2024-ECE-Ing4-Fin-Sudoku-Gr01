@@ -1,13 +1,14 @@
-import matplotlib.pyplot as plt
-from timeit import default_timer
+# import matplotlib.pyplot as plt
+# from timeit import default_timer
 import numpy as np
-from sinkhorn_knopp import sinkhorn_knopp as skp
-
+# from sinkhorn_knopp import sinkhorn_knopp as skp
+import math
 
 class Constraints:
     c = np.array([]) # [3N][N]
     m = np.array([]) # [N^2][3]
     p = np.array([]) # [N^2][N]
+    pq = np.array([]) 
     r = np.array([]) #P(C(m)|s(n)=x) [3N][N^2][N]
     q = np.array([]) #P(Sn = x|all the constraints except Cm involving Sn are satisfied)
     cq = np.array([])
@@ -48,6 +49,7 @@ class Constraints:
         self.r=np.zeros((self.size*3,self.size**2,self.size))
         self.q=np.zeros((self.size*3,self.size**2,self.size))
         self.cq=np.zeros((self.size*3,self.size,self.size))
+        self.pq=np.zeros((self.size**2,self.size))
 
     def Nh(self,S):
         nh=np.empty((0,int(self.size)))   
@@ -91,6 +93,7 @@ class Constraints:
     def get_grid_p_c(self):
           for i in range(len(self.c)):
                 self.get_p_c(i)
+
     def get_p_c(self,c):
           imp= []
           for i in self.c[c]:
@@ -112,13 +115,110 @@ class Constraints:
                       tmp[mask.astype(bool)] = 0
                 self.cq[c][i]=tmp/sum(tmp)
 
-
     def guess(self):
-          for i in range(len(self.p)):
-            max_value = np.max(self.p[i])
-            indices = np.where(self.p[i] == max_value)[0]
-            if len(indices)==1:
-                self.s[i]=indices[0]+1
+        maxP = float("-inf")
+        maxIndex = 0
+
+        for n in range(len(self.s)):
+            if self.s[n] == 0:
+                for v in range(self.size):
+                    if 0 < self.p[n][v] < 1:
+                        if self.p[n][v] > maxP:
+                            maxP = self.p[n][v]
+                            maxIndex = n
+
+        if self.s[maxIndex] != 0:
+            return -1
+
+        maxRP = float("-inf")
+        value = 0
+        relatedCells = [-1] * (2*(self.size-1)+((int(np.sqrt(self.size)))-1)**2)
+        r_index = 0
+
+        for C in range(len(self.m[0])):
+            m = self.m[maxIndex][C]
+            for i in range(self.size):
+                if self.s[self.c[m][i]] == 0:
+                    flag = True
+                    for ii in range(r_index):
+                        if relatedCells[ii] == self.c[m][i]:
+                            flag = False
+                            break
+                    if flag:
+                        relatedCells[r_index] = self.c[m][i]
+                        r_index += 1
+
+        for v in range(self.size):
+            if self.p[maxIndex][v] > 0:
+                sum_val = float("-inf")
+                i = 0
+                while relatedCells[i] != -1:
+                    sum_val = self.sum_log(sum_val, self.p[relatedCells[i]][v])
+                    i += 1
+                self.pq[maxIndex][v] = self.p[maxIndex][v] - sum_val
+                if self.pq[maxIndex][v] > maxRP:
+                    maxRP = self.pq[maxIndex][v]
+                    value = v + 1
+
+        if value == 0:
+            return -1
+
+        self.s[maxIndex] = value
+        for v in range(self.size):
+            self.p[maxIndex][v] = float("-inf")
+
+        relatedCells = [-1] * 20
+        r_index = 0
+
+        for C in range(len(self.m[0])):
+            m = self.m[maxIndex][C]
+            for i in range(9):
+                if self.s[self.c[m][i]] == 0 and self.p[self.c[m][i]][value - 1] > 0 and self.c[m][i] != maxIndex:
+                    flag = True
+                    for ii in range(r_index):
+                        if relatedCells[ii] == self.c[m][i]:
+                            flag = False
+                            break
+                    if flag:
+                        relatedCells[r_index] = self.c[m][i]
+                        r_index += 1
+
+        i = 0
+        while relatedCells[i] != -1:
+            num = sum(1 for v in range(9) if self.p[relatedCells[i]][v] > 0)
+            distribute = self.p[relatedCells[i]][value - 1] - math.log10(num - 1)
+            self.p[relatedCells[i]][value - 1] = float("-inf")
+            for v in range(9):
+                if self.p[relatedCells[i]][v] > 0:
+                    self.sum_log(self.p[relatedCells[i]][v], distribute)
+            i += 1
+
+        return 1
+
+
+
+
+    def sum_log(self,a, b):
+        if a == float("-inf"):
+            return b
+        elif b == float("-inf"):
+            return a
+        else:
+            if a > b:
+                x = a
+                y = b
+            else:
+                x = b
+                y = a
+            decide = 10 ** (x - y)
+            if (decide + 1) == float("inf"):
+                c = x
+            else:
+                decide += 1
+                c = y + math.log10(decide)
+            return c
+
+
 
     def sss(self):
           #while True:
@@ -140,9 +240,9 @@ t=Constraints()
 t.read(sudoku)
 t.innit_p()
 # t.print_s()
-for i in range(10):
-    t.get_grid_p_c()
-    t.grid_p()
+for i in range(100):
+    #t.get_grid_p_c()
+    #t.grid_p()
     t.guess()
 # print()
 # t.print_s()
