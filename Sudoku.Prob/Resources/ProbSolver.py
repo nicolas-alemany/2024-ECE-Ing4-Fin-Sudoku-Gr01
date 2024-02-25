@@ -23,7 +23,6 @@ class Constraints:
         self.size = size
         self.CellDomain = list(range(1, size+1))
         self.CellIndices = list(range(size**2))
-        self.sk = skp.SinkhornKnopp(max_iter=1) 
 
         for i in range(size):
             c.append(list(range(i * size, (i + 1) * size)))
