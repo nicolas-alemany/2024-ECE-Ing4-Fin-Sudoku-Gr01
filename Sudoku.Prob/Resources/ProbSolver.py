@@ -13,16 +13,19 @@ class Constraints:
     q = np.array([]) #P(Sn = x|all the constraints except Cm involving Sn are satisfied)
     cq = np.array([])
     s =  np.array([])
+    n_c = np.array([])
     size = 9
     CellDomain = list(range(1, size+1))
     CellIndices = list(range(size**2))
     sk=[]
+    memo = {}
 
     def __init__(self, size = 9):
         c = []
         self.size = size
         self.CellDomain = list(range(1, size+1))
         self.CellIndices = list(range(size**2))
+        self.sk = skp.SinkhornKnopp(max_iter=1) 
 
         for i in range(size):
             c.append(list(range(i * size, (i + 1) * size)))
@@ -49,6 +52,7 @@ class Constraints:
         self.q=np.zeros((self.size*3,self.size**2,self.size))
         self.cq=np.zeros((self.size*3,self.size,self.size))
         self.pq=np.zeros((self.size**2,self.size))
+        self.n_c=np.ones_like(c)*-1
 
     def Nh(self,S):
         nh=np.empty((0,int(self.size)))   
@@ -70,6 +74,8 @@ class Constraints:
                 mask = np.ones_like(tmp)
                 mask[np.array([ self.s[i]])-1] = 0
                 tmp[mask.astype(bool)] = 0
+                for j in self.m[i]:
+                     self.cq[self.c==j]=self.s[i]
              self.p[i]=tmp/sum(tmp)
              
     def grid_p(self):
@@ -196,6 +202,95 @@ class Constraints:
 
 
 
+    def message_passing(self):
+        # R[m][n][x]=* # (1 - q[m][n'][value]) other 0 cell related in the same C
+        
+        for n in range(81):
+            if self.s[n] == 0:
+                for x in range(9):
+                    if self.p[n][x] != -float('inf'):  # possible values!
+                        for C in range(3):
+                            m = self.m[n][C]
+                            self.r[m][n][x] = 0  # Initialize R[m][n][x] to 1
+                            
+                            vp = self.get_possible_vp_r(m, n, x)
+                            
+                            possible_vp = vp.split(",")
+                            v = possible_vp[0]
+                            p = possible_vp[1].strip().split(" ")
+                            sum_val = self.permutate(n, "", v, p, -float('inf'), m)#
+                            self.r[m][n][x] = sum_val  # Update R[m][n][x] with the calculated sum
+
+        # Q[m][n][x]= P(n=x) * # R[m'][n][x], m'= other two
+        for n in range(81):
+            if self.s[n] == 0:
+                for x in range(9):
+                    if self.p[n][x] != -float('inf'):  # possible values!
+                        for C in range(3):
+                            m = self.m[n][C]
+                            self.q[m][n][x] = self.p[n][x]  # P(n=x)
+                            for C_other in range(3):
+                                if C_other != C:
+                                    m_2 = self.m[n][C_other]
+                                    self.q[m][n][x] += self.r[m_2][n][x]
+
+        # P[n][x]
+        for n in range(81):
+            if self.s[n] == 0:
+                for x in range(9):
+                    if self.p[n][x] != -float('inf'):  # possible values!
+                        for C in range(3):
+                            self.p[n][x] += self.r[self.m[n][C]][n][x]
+    
+
+     
+
+    def permutate(self,n, pre, last, position, sum_val, m):
+        if len(last) == 0:
+            if pre in self.memo:
+                return self.memo[pre]
+            product = 0
+            for i in range(len(pre)):
+                value = int(pre[i])
+                indexS = int(position[i])
+                product += self.q[m][indexS][value]
+            sum_val = self.sum_log(sum_val, product)
+            self.memo[pre] = sum_val
+            return sum_val
+        for i in range(len(last)):
+            sum_val = self.permutate(n, pre + last[i], last[:i] + last[i+1:], position, sum_val, m)
+        return sum_val
+
+
+    
+    def get_possible_vp_r(self,m, indexS, value):
+        result = ""
+        for i in range(9):
+            flag = True
+            index_NC = 0
+            while self.n_c[m][index_NC] != -1 and flag:
+                if (i + 1) == self.s[self.n_c[m][index_NC]]:
+                    flag = False
+                index_NC += 1
+                
+            if flag and i != value:
+                result += str(i)
+        result += ","
+        for i in range(9):
+            flag = True
+            index_NC = 0
+            while self.n_c[m][index_NC] != -1 and flag:
+                if self.c[m][i] == self.n_c[m][index_NC]:
+                    flag = False
+                index_NC += 1
+            if flag and self.c[m][i] != indexS:
+                result += str(self.c[m][i]) + " "
+        return result.strip()
+
+
+    def sum_log(a, b):
+        return math.log10(math.pow(10, a) + math.pow(10, b))
+
 
     def sum_log(self,a, b):
         if a == float("-inf"):
@@ -242,7 +337,8 @@ t.innit_p()
 for i in range(100):
     #t.get_grid_p_c()
     #t.grid_p()
-    t.guess()
+    t.message_passing()
+t.guess()
 # print()
 # t.print_s()
 
